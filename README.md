@@ -1,2 +1,2 @@
-# DCS
-Ropositorio para desenvolvimento de sistema Distribuidos 
+# DSC
+Ropositorio para Desenvolvimento de Sistema Corporativos 
