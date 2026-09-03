@@ -2,12 +2,9 @@ package br.edu.ifrn.projetoinicial.controllers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import br.edu.ifrn.projetoinicial.models.Curso;
 
@@ -35,5 +32,19 @@ public class CursoController {
             }
         }
         return null;
+    }
+
+    @GetMapping(params = "nome")
+    public List<Curso> buscarPorNome(@RequestParam String nome) {
+        List<Curso> resultado = new ArrayList<>();
+        String textoBusca = nome.toLowerCase(Locale.ROOT);
+
+        for (Curso curso : cursos) {
+            if (curso.nome().toLowerCase(Locale.ROOT).contains(textoBusca)) {
+                resultado.add(curso);
+            }
+        }
+
+        return resultado;
     }
 }
