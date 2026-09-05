@@ -1,5 +1,7 @@
 package br.edu.ifrn.calculadora.controllers;
 
+import java.util.Locale;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,5 +24,68 @@ public class CalculadoraController {
     public int subtrair(@RequestParam int numero1, @RequestParam int numero2) {
         // @RequestParam recebe valores escritos após o sinal de interrogação da URL.
         return numero1 - numero2;
+    }
+
+    @GetMapping("/calcular/{operacao}")
+    public String calcular(
+            @PathVariable String operacao,
+            @RequestParam double n1,
+            @RequestParam double n2,
+            @RequestParam(defaultValue = "2") int casasDecimais) {
+
+        // Limitamos a precisão para evitar valores negativos ou respostas exageradamente grandes.
+        if (casasDecimais < 0 || casasDecimais > 10) {
+            return "Erro: casasDecimais deve estar entre 0 e 10.";
+        }
+
+        double resultado;
+        String nomeOperacao;
+
+        // Um único switch permite atender as quatro operações sem repetir endpoints parecidos.
+        switch (operacao.toLowerCase(Locale.ROOT)) {
+            case "somar" -> {
+                resultado = n1 + n2;
+                nomeOperacao = "soma";
+            }
+            case "subtrair" -> {
+                resultado = n1 - n2;
+                nomeOperacao = "subtração";
+            }
+            case "multiplicar" -> {
+                resultado = n1 * n2;
+                nomeOperacao = "multiplicação";
+            }
+            case "dividir" -> {
+                // A divisão por zero não produz um resultado matemático válido neste exercício.
+                if (n2 == 0) {
+                    return "Erro: não é possível dividir por zero.";
+                }
+                resultado = n1 / n2;
+                nomeOperacao = "divisão";
+            }
+            default -> {
+                return "Erro: operação inválida. Use somar, subtrair, multiplicar ou dividir.";
+            }
+        }
+
+        // Locale.US garante o ponto como separador decimal, como nas URLs e nos exemplos.
+        String resultadoFormatado = String.format(
+                Locale.US,
+                "%." + casasDecimais + "f",
+                resultado);
+
+        return "Operação: " + nomeOperacao
+                + "\nNúmero 1: " + formatarNumero(n1)
+                + "\nNúmero 2: " + formatarNumero(n2)
+                + "\nResultado: " + resultadoFormatado;
+    }
+
+    private String formatarNumero(double numero) {
+        // Evita mostrar ".0" quando o valor recebido ou calculado for inteiro.
+        if (numero == Math.rint(numero)) {
+            return String.format(Locale.US, "%.0f", numero);
+        }
+
+        return Double.toString(numero);
     }
 }

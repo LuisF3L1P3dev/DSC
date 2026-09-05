@@ -28,15 +28,15 @@ GET /calculadora/subtrair?numero1=20&numero2=8 — receba os dois números utili
 
 ## 3. Endpoint único de cálculo
 
-GET /calculadora/calcular/{operacao}?numero1=10&numero2=5 — crie um único endpoint capaz de realizar as operações somar, subtrair, multiplicar e dividir. A operação deve ser recebida por @PathVariable e os números por @RequestParam.
+GET /calculadora/calcular/{operacao}?n1=10&n2=5 — crie um único endpoint capaz de realizar as operações somar, subtrair, multiplicar e dividir. A operação deve ser recebida por @PathVariable e os números por @RequestParam.
 
-/calculadora/calcular/somar?numero1=10&numero2=5
+/calculadora/calcular/somar?n1=10&n2=5
 
-/calculadora/calcular/subtrair?numero1=10&numero2=5
+/calculadora/calcular/subtrair?n1=10&n2=5
 
-/calculadora/calcular/multiplicar?numero1=10&numero2=5
+/calculadora/calcular/multiplicar?n1=10&n2=5
 
-/calculadora/calcular/dividir?numero1=10&numero2=5
+/calculadora/calcular/dividir?n1=10&n2=5
 
 O endpoint deve retornar uma mensagem informando a operação realizada e o resultado. Exemplo:
 
@@ -55,7 +55,7 @@ Erro: não é possível dividir por zero.
 
 Casas decimais (parâmetro opcional). Acrescente um parâmetro opcional chamado casasDecimais, usando @RequestParam(defaultValue = "2"), de modo que, quando o usuário não informar casasDecimais, o sistema utilize 2.
 
-/calculadora/calcular/dividir?numero1=10&numero2=3&casasDecimais=2
+/calculadora/calcular/dividir?n1=10&n2=3&casasDecimais=2
 
 ## 4. Par ou ímpar
 
