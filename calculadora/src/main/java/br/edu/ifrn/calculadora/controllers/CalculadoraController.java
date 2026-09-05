@@ -80,6 +80,16 @@ public class CalculadoraController {
                 + "\nResultado: " + resultadoFormatado;
     }
 
+    @GetMapping("/par-ou-impar/{numero}")
+    public String verificarParOuImpar(@PathVariable int numero) {
+        // Se o resto da divisão por 2 for zero, o número é par.
+        if (numero % 2 == 0) {
+            return "O número " + numero + " é PAR.";
+        }
+
+        return "O número " + numero + " é ÍMPAR.";
+    }
+
     private String formatarNumero(double numero) {
         // Evita mostrar ".0" quando o valor recebido ou calculado for inteiro.
         if (numero == Math.rint(numero)) {
