@@ -116,6 +116,30 @@ public class CalculadoraController {
                 + "\nQuadrado: " + quadrado;
     }
 
+    @GetMapping("/media")
+    public String calcularMedia(
+            @RequestParam double nota1,
+            @RequestParam double nota2,
+            @RequestParam double nota3) {
+
+        double media = (nota1 + nota2 + nota3) / 3;
+        String situacao;
+
+        // Testamos primeiro a maior faixa; assim, cada média entra em apenas uma situação.
+        if (media >= 7) {
+            situacao = "APROVADO";
+        } else if (media >= 4) {
+            situacao = "RECUPERAÇÃO";
+        } else {
+            situacao = "REPROVADO";
+        }
+
+        String mediaFormatada = String.format(Locale.US, "%.1f", media);
+
+        return "Média: " + mediaFormatada
+                + "\nSituação: " + situacao;
+    }
+
     private String formatarNumero(double numero) {
         // Evita mostrar ".0" quando o valor recebido ou calculado for inteiro.
         if (numero == Math.rint(numero)) {
