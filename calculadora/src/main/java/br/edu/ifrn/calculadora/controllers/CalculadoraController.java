@@ -90,6 +90,32 @@ public class CalculadoraController {
         return "O número " + numero + " é ÍMPAR.";
     }
 
+    @GetMapping("/analisar/{numero}")
+    public String analisar(@PathVariable int numero) {
+        String paridade = numero % 2 == 0 ? "PAR" : "ÍMPAR";
+        String sinal;
+
+        // A ordem das condições separa as três possibilidades pedidas no enunciado.
+        if (numero > 0) {
+            sinal = "POSITIVO";
+        } else if (numero < 0) {
+            sinal = "NEGATIVO";
+        } else {
+            sinal = "ZERO";
+        }
+
+        long dobro = (long) numero * 2;
+        double metade = numero / 2.0;
+        long quadrado = (long) numero * numero;
+
+        return "Número: " + numero
+                + "\nPar ou ímpar: " + paridade
+                + "\nPositivo, negativo ou zero: " + sinal
+                + "\nDobro: " + dobro
+                + "\nMetade: " + formatarNumero(metade)
+                + "\nQuadrado: " + quadrado;
+    }
+
     private String formatarNumero(double numero) {
         // Evita mostrar ".0" quando o valor recebido ou calculado for inteiro.
         if (numero == Math.rint(numero)) {
