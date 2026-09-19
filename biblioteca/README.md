@@ -3,8 +3,8 @@
 Projeto educacional que implementa o modelo lógico de uma biblioteca usando Spring Boot,
 Spring Data JPA e H2.
 
-O escopo atual contém as entidades, os repositories, os services de consulta e os testes.
-Não há API REST nesta etapa.
+O escopo atual contém entidades, repositories, services de consulta, API REST, Swagger
+UI, dados de demonstração e testes automatizados.
 
 ## Organização das pastas
 
@@ -16,6 +16,7 @@ src/main/java/br/edu/ifrn/biblioteca
 |  `- projection/          Formatos internos de resultados agregados
 |- service/                Contratos dos casos de uso de consulta
 |  `- impl/                Implementações dos contratos
+|- web/                    Controllers, DTOs, mapeadores e tratamento de erros HTTP
 `- BibliotecaApplication  Ponto de entrada do Spring Boot
 
 src/main/resources
@@ -56,6 +57,8 @@ as duas colunas necessárias.
 
 `@EntityGraph` é usado nos empréstimos para trazer usuário, itens e livros na mesma
 consulta. Isso evita uma sequência de consultas adicionais ao percorrer o resultado.
+As consultas de livros também carregam categoria e autores para que os DTOs possam ser
+montados sem depender de uma sessão JPA aberta durante a serialização.
 
 ## Relação entre exercícios e métodos
 
@@ -96,6 +99,39 @@ O banco principal é H2 em memória. O Hibernate cria ou atualiza as tabelas ao 
 aplicação, e os dados deixam de existir quando o processo termina. Os testes usam outro
 banco H2 e recriam o esquema para manter os cenários isolados.
 
+## Testar manualmente pelo Swagger
+
+Inicie a aplicação com o perfil `dev` para carregar um cenário completo de demonstração:
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+
+Depois, acesse:
+
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+O perfil `dev` cria três categorias, três livros, dois autores, dois usuários e três
+empréstimos. As datas são calculadas a partir do relógio atual, por isso sempre haverá
+um empréstimo atrasado e outro com vencimento futuro.
+
+Rotas disponíveis:
+
+| Método | Rota | Exemplo de parâmetro |
+|---|---|---|
+| GET | `/api/livros/disponiveis` | Sem parâmetro |
+| GET | `/api/livros/por-categoria` | `nome=Tecnologia` |
+| GET | `/api/livros/por-autor` | `nome=Ana Código` |
+| GET | `/api/usuarios/por-nome` | `trecho=Silva` |
+| GET | `/api/usuarios/{id}/emprestimos/ativos` | Use o ID retornado pela busca de usuário |
+| GET | `/api/emprestimos/atrasados` | Sem parâmetro |
+| GET | `/api/categorias/quantidade-livros` | Sem parâmetro |
+
+Os controllers retornam DTOs, e não entidades JPA. Isso mantém o formato JSON separado
+do banco e evita recursão infinita nos relacionamentos bidirecionais.
+
 ## Executar os testes
 
 No Windows:
@@ -112,4 +148,6 @@ usam Mockito e verificam a lógica sem iniciar o banco.
 - Consultar empréstimos atrasados não altera automaticamente o status para `ATRASADO`.
 - Cadastro, realização de empréstimo, devolução e atualização de estoque ainda não são
   casos de uso implementados.
-- Controllers REST, DTOs de API e interface gráfica ficam para uma próxima etapa.
+- A API atual é somente de leitura e não possui autenticação ou paginação.
+- O Swagger é uma interface de documentação e teste das rotas, não uma interface final
+  para usuários da biblioteca.
