@@ -13,8 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 // início de todas as URLs deste controller.
 @RequestMapping("/calculadora")
 public class CalculadoraController {
-
+    // @GetMapping mapeia requisições GET para o metodo
     @GetMapping("/somar/{numero1}/{numero2}")
+    // @PathVariable captura o valor {id} da URL e injeta como parâmetro do metodo
     public int somar(@PathVariable int numero1, @PathVariable int numero2) {
         // Os valores entre chaves na URL chegam ao método por meio de @PathVariable.
         return numero1 + numero2;
