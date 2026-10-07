@@ -1,0 +1,27 @@
+
+# Maven
+target/
+
+# Gradle
+build/
+.gradle/
+
+# Java
+*.class
+*.log
+hs_err_pid*
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Configurações locais e segredos
+.env
+.env.*
+application-local.properties
+application-local.yml
