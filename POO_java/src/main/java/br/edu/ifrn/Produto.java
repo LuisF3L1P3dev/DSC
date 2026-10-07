@@ -1,7 +1,7 @@
 package br.edu.ifrn;
 
 
-class Produto{
+class Produto implements Descontavel{
     private String nome;
     private double preco;
     private int quant;
@@ -33,6 +33,14 @@ class Produto{
         return false;
     }
 
+    @Override
+    public void aplicarDesconto(double pct){
+        if (pct > 0 && pct <= 100){
+            this.preco -= this.preco *(pct/100.0);
+        }
+    }
+
+    @Override
     public String toString(){
         return String.format("Produto: %s | Preço: R$ %.2f | Estoque: %d un", nome, preco, quant);
     }

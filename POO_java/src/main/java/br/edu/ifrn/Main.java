@@ -13,6 +13,7 @@ public class Main
 
         p1.vender(3);
 
+        p1.aplicarDesconto(50);
         System.out.println(p1);
     }
 }
