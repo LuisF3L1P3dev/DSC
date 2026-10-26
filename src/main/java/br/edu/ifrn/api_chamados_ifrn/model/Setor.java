@@ -32,4 +32,7 @@ public class Setor {
 
     @OneToMany(mappedBy = "setor")
     private List<Categoria> categorias = new ArrayList<>();
+
+    @OneToMany(mappedBy = "setor")
+    private List<Usuario> usuarios = new ArrayList<>();
 }
