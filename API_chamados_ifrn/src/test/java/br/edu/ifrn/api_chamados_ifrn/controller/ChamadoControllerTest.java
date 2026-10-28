@@ -47,4 +47,41 @@ class ChamadoControllerTest {
                 .andExpect(jsonPath("$.dataFechamento").value(nullValue()))
                 .andExpect(jsonPath("$.solucao").value(nullValue()));
     }
+
+    @Test
+    void preservaPrioridadeInformadaNoCorpo() throws Exception {
+        mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "titulo": "Projetor sem imagem",
+                                  "descricao": "O projetor liga, mas não exibe imagem",
+                                  "local": "Sala 2",
+                                  "prioridade": "ALTA",
+                                  "solicitanteId": 1,
+                                  "categoriaId": 1
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.prioridade").value("ALTA"))
+                .andExpect(jsonPath("$.status").value("ABERTO"));
+    }
+
+    @Test
+    void devolve400ParaDadosObrigatoriosInvalidos() throws Exception {
+        mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "titulo": " ",
+                                  "descricao": "Descrição válida",
+                                  "local": "Bloco A",
+                                  "solicitanteId": 1,
+                                  "categoriaId": 1
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.caminho").value("/chamados"))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("titulo")));
+    }
+
 }
