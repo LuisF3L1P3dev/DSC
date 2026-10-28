@@ -84,4 +84,36 @@ class ChamadoControllerTest {
                 .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("titulo")));
     }
 
+    @Test
+    void devolve409QuandoTecnicoTentaAbrirChamado() throws Exception {
+        mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(3, 1)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.caminho").value("/chamados"));
+    }
+
+    @Test
+    void devolve404QuandoSolicitanteOuCategoriaNaoExistem() throws Exception {
+        mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(999999, 1)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+        mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 999999)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    private static String pedido(int solicitanteId, int categoriaId) {
+        return """
+                {
+                  "titulo": "Falha na rede",
+                  "descricao": "Sem conexão no laboratório",
+                  "local": "Bloco A",
+                  "solicitanteId": %d,
+                  "categoriaId": %d
+                }
+                """.formatted(solicitanteId, categoriaId);
+    }
 }
