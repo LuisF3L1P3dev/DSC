@@ -1,0 +1,50 @@
+package br.edu.ifrn.api_chamados_ifrn.controller;
+
+import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+@SpringBootTest(properties = "spring.jpa.open-in-view=false")
+@AutoConfigureMockMvc
+@Transactional
+class ChamadoControllerTest {
+
+    @Autowired
+    private MockMvc mvc;
+
+    @Test
+    void abreChamadoEDevolveOsValoresDefinidosPeloService() throws Exception {
+        mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "titulo": "Falha na rede",
+                                  "descricao": "Sem conexão no laboratório",
+                                  "local": "Bloco A",
+                                  "solicitanteId": 1,
+                                  "categoriaId": 1
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", startsWith("/chamados/")))
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.prioridade").value("MEDIA"))
+                .andExpect(jsonPath("$.status").value("ABERTO"))
+                .andExpect(jsonPath("$.dataAbertura").isNotEmpty())
+                .andExpect(jsonPath("$.solicitanteId").value(1))
+                .andExpect(jsonPath("$.categoriaId").value(1))
+                .andExpect(jsonPath("$.tecnicoId").value(nullValue()))
+                .andExpect(jsonPath("$.dataFechamento").value(nullValue()))
+                .andExpect(jsonPath("$.solucao").value(nullValue()));
+    }
+}
