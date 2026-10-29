@@ -7,6 +7,7 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.dto.CancelarChamadoRequest;
+import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoRequest;
 import br.edu.ifrn.api_chamados_ifrn.dto.ResolverChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.exception.RecursoNaoEncontradoException;
 import br.edu.ifrn.api_chamados_ifrn.exception.RegraNegocioException;
@@ -20,6 +21,7 @@ import br.edu.ifrn.api_chamados_ifrn.model.TipoUsuario;
 import br.edu.ifrn.api_chamados_ifrn.model.Usuario;
 import br.edu.ifrn.api_chamados_ifrn.repository.CategoriaRepository;
 import br.edu.ifrn.api_chamados_ifrn.repository.ChamadoRepository;
+import br.edu.ifrn.api_chamados_ifrn.repository.InteracaoRepository;
 import br.edu.ifrn.api_chamados_ifrn.repository.UsuarioRepository;
 import java.util.Comparator;
 import java.util.List;
@@ -36,12 +38,14 @@ public class ChamadoService {
     private final ChamadoRepository chamadoRepository;
     private final UsuarioRepository usuarioRepository;
     private final CategoriaRepository categoriaRepository;
+    private final InteracaoRepository interacaoRepository;
 
     public ChamadoService(ChamadoRepository chamadoRepository, UsuarioRepository usuarioRepository,
-            CategoriaRepository categoriaRepository) {
+            CategoriaRepository categoriaRepository, InteracaoRepository interacaoRepository) {
         this.chamadoRepository = chamadoRepository;
         this.usuarioRepository = usuarioRepository;
         this.categoriaRepository = categoriaRepository;
+        this.interacaoRepository = interacaoRepository;
     }
 
     @Transactional
@@ -129,6 +133,33 @@ public class ChamadoService {
 
         chamado.setStatus(Status.CANCELADO);
         return resposta(chamadoRepository.save(chamado));
+    }
+
+    @Transactional
+    public InteracaoResponse registrarInteracao(Long chamadoId, InteracaoRequest request) {
+        Chamado chamado = chamadoRepository.findById(chamadoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado n\u00e3o encontrado: " + chamadoId));
+        if (chamado.getStatus() == Status.RESOLVIDO || chamado.getStatus() == Status.CANCELADO) {
+            throw new RegraNegocioException("Chamados resolvidos ou cancelados n\u00e3o aceitam novas intera\u00e7\u00f5es.");
+        }
+
+        Usuario autor = usuarioRepository.findById(request.autorId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Usu\u00e1rio n\u00e3o encontrado: " + request.autorId()));
+        boolean autorEhSolicitante = Objects.equals(chamado.getSolicitante().getId(), autor.getId());
+        boolean autorEhTecnicoAtribuido = chamado.getTecnico() != null
+                && Objects.equals(chamado.getTecnico().getId(), autor.getId());
+        if (!autorEhSolicitante && !autorEhTecnicoAtribuido) {
+            throw new RegraNegocioException(
+                    "Somente o solicitante ou o t\u00e9cnico atribu\u00eddo podem interagir com o chamado.");
+        }
+
+        Interacao interacao = new Interacao();
+        interacao.setTexto(request.texto());
+        interacao.setDataHora(LocalDateTime.now());
+        interacao.setChamado(chamado);
+        interacao.setAutor(autor);
+        return resposta(interacaoRepository.save(interacao));
     }
 
     @Transactional(readOnly = true)

@@ -7,6 +7,8 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.PaginaResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.dto.CancelarChamadoRequest;
+import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoRequest;
+import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.ResolverChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.service.ChamadoService;
 import jakarta.validation.Valid;
@@ -14,6 +16,7 @@ import java.net.URI;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -56,6 +59,13 @@ public class ChamadoController {
     public ChamadoResponse cancelar(@PathVariable("id") Long id,
             @Valid @RequestBody CancelarChamadoRequest request) {
         return chamadoService.cancelar(id, request);
+    }
+
+    @PostMapping("/{id}/interacoes")
+    public ResponseEntity<InteracaoResponse> registrarInteracao(@PathVariable("id") Long id,
+            @Valid @RequestBody InteracaoRequest request) {
+        InteracaoResponse resposta = chamadoService.registrarInteracao(id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resposta);
     }
 
     @GetMapping
