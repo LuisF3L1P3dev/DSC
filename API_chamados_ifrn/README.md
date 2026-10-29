@@ -131,3 +131,4 @@ O projeto não prevê autenticação. As ações dos chamados identificam o usu�
 
 - [Requisitos do sistema](docs/Projeto_API_Sistema_de_Chamados_IFRN.md).
 - [Plano de desenvolvimento](docs/Plano_de_Desenvolvimento.md).
+- [Resultado da validação pelo Compose](docs/Validacao_Compose.md).
