@@ -6,6 +6,7 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoFiltro;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
+import br.edu.ifrn.api_chamados_ifrn.dto.ResolverChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.exception.RecursoNaoEncontradoException;
 import br.edu.ifrn.api_chamados_ifrn.exception.RegraNegocioException;
 import br.edu.ifrn.api_chamados_ifrn.model.Categoria;
@@ -91,6 +92,26 @@ public class ChamadoService {
 
         chamado.setTecnico(tecnico);
         chamado.setStatus(Status.EM_ATENDIMENTO);
+        return resposta(chamadoRepository.save(chamado));
+    }
+
+    @Transactional
+    public ChamadoResponse resolver(Long chamadoId, ResolverChamadoRequest request) {
+        Chamado chamado = chamadoRepository.findById(chamadoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado n\u00e3o encontrado: " + chamadoId));
+        if (chamado.getStatus() != Status.EM_ATENDIMENTO) {
+            throw new RegraNegocioException("Somente chamados em atendimento podem ser resolvidos.");
+        }
+        if (chamado.getTecnico() == null || !Objects.equals(chamado.getTecnico().getId(), request.tecnicoId())) {
+            throw new RegraNegocioException("Somente o t\u00e9cnico atribu\u00eddo pode resolver o chamado.");
+        }
+        if (request.solucao() == null || request.solucao().isBlank()) {
+            throw new IllegalArgumentException("A solu\u00e7\u00e3o \u00e9 obrigat\u00f3ria.");
+        }
+
+        chamado.setSolucao(request.solucao());
+        chamado.setStatus(Status.RESOLVIDO);
+        chamado.setDataFechamento(LocalDateTime.now());
         return resposta(chamadoRepository.save(chamado));
     }
 
