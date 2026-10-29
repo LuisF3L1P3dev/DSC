@@ -3,6 +3,7 @@ package br.edu.ifrn.api_chamados_ifrn.controller;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,6 +16,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -71,6 +73,63 @@ class ChamadoControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.prioridade").value("ALTA"))
                 .andExpect(jsonPath("$.status").value("ABERTO"));
+    }
+
+    @Test
+    void assumeChamadoEDevolveEstadoAtualizado() throws Exception {
+        MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String caminho = criado.getResponse().getHeader("Location");
+
+        mvc.perform(patch(caminho + "/assumir").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\":3}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EM_ATENDIMENTO"))
+                .andExpect(jsonPath("$.tecnicoId").value(3));
+    }
+
+    @Test
+    void devolve400QuandoTecnicoIdNaoEValido() throws Exception {
+        Long chamadoId = inserirChamado("Falha na rede", "MEDIA", "ABERTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, null);
+
+        mvc.perform(patch("/chamados/{id}/assumir", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/assumir"));
+    }
+
+    @Test
+    void recusaAssuncaoParaChamadoOuTecnicoIncompativel() throws Exception {
+        Long chamadoEmAtendimento = inserirChamado("Chamado em atendimento", "MEDIA", "EM_ATENDIMENTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, 3L);
+        Long chamadoAberto = inserirChamado("Chamado aberto", "MEDIA", "ABERTO",
+                LocalDateTime.of(2026, 1, 2, 9, 0), 1L, 1L, null);
+
+        mvc.perform(patch("/chamados/999999/assumir").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\":3}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+        mvc.perform(patch("/chamados/{id}/assumir", chamadoEmAtendimento)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"tecnicoId\":3}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+        mvc.perform(patch("/chamados/{id}/assumir", chamadoAberto)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"tecnicoId\":999999}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+        mvc.perform(patch("/chamados/{id}/assumir", chamadoAberto)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"tecnicoId\":1}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+        mvc.perform(patch("/chamados/{id}/assumir", chamadoAberto)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"tecnicoId\":4}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
     }
 
     @Test

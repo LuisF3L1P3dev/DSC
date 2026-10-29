@@ -5,6 +5,7 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoDetalheResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoFiltro;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.PaginaResponse;
+import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.service.ChamadoService;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +36,12 @@ public class ChamadoController {
     public ResponseEntity<ChamadoResponse> abrir(@Valid @RequestBody ChamadoRequest request) {
         ChamadoResponse resposta = chamadoService.abrir(request);
         return ResponseEntity.created(URI.create("/chamados/" + resposta.id())).body(resposta);
+    }
+
+    @PatchMapping("/{id}/assumir")
+    public ChamadoResponse assumir(@PathVariable("id") Long id,
+            @Valid @RequestBody AssumirChamadoRequest request) {
+        return chamadoService.assumir(id, request);
     }
 
     @GetMapping
