@@ -91,6 +91,81 @@ class ChamadoControllerTest {
     }
 
     @Test
+    void resolveChamadoEDevolveSolucaoEDataDeFechamento() throws Exception {
+        MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String caminho = criado.getResponse().getHeader("Location");
+
+        mvc.perform(patch(caminho + "/assumir").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\":3}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(patch(caminho + "/resolver").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "tecnicoId": 3,
+                                  "solucao": "Cabo de rede substitu\u00eddo."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RESOLVIDO"))
+                .andExpect(jsonPath("$.tecnicoId").value(3))
+                .andExpect(jsonPath("$.solucao").value("Cabo de rede substitu\u00eddo."))
+                .andExpect(jsonPath("$.dataFechamento").isNotEmpty());
+    }
+
+    @Test
+    void devolve400QuandoResolucaoNaoTemSolucaoValida() throws Exception {
+        mvc.perform(patch("/chamados/{id}/resolver", 999)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\":3,\"solucao\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.caminho").value("/chamados/999/resolver"))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("solucao")));
+    }
+
+    @Test
+    void devolve404EFormatoPadronizadoQuandoChamadoNaoExisteAoResolver() throws Exception {
+        mvc.perform(patch("/chamados/{id}/resolver", 999999)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoResolucao(3)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("Chamado")))
+                .andExpect(jsonPath("$.caminho").value("/chamados/999999/resolver"));
+    }
+
+    @Test
+    void devolve409QuandoChamadoAindaEstaAberto() throws Exception {
+        Long chamadoId = inserirChamado("Chamado aberto", "MEDIA", "ABERTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, null);
+
+        mvc.perform(patch("/chamados/{id}/resolver", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoResolucao(3)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/resolver"));
+    }
+
+    @Test
+    void devolve409QuandoOutroTecnicoTentaResolver() throws Exception {
+        Long chamadoId = inserirChamado("Chamado em atendimento", "MEDIA", "EM_ATENDIMENTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, 3L);
+
+        mvc.perform(patch("/chamados/{id}/resolver", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoResolucao(4)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/resolver"));
+    }
+
+    @Test
     void devolve400QuandoTecnicoIdNaoEValido() throws Exception {
         Long chamadoId = inserirChamado("Falha na rede", "MEDIA", "ABERTO",
                 LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, null);
@@ -275,6 +350,10 @@ class ChamadoControllerTest {
                   "categoriaId": %d
                 }
                 """.formatted(solicitanteId, categoriaId);
+    }
+
+    private static String pedidoResolucao(int tecnicoId) {
+        return "{\"tecnicoId\":" + tecnicoId + ",\"solucao\":\"Problema corrigido.\"}";
     }
 
     private Long inserirChamado(String titulo, String prioridade, String status, LocalDateTime dataAbertura,
