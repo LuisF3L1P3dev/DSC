@@ -9,7 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -31,6 +35,9 @@ class ChamadoControllerTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     void abreChamadoEDevolveOsValoresDefinidosPeloService() throws Exception {
@@ -154,6 +161,110 @@ class ChamadoControllerTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("ABERTO")))
                 .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/cancelar"));
+    }
+
+    @Test
+    void registraInteracaoERetorna201ComDadosCriados() throws Exception {
+        MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String caminho = criado.getResponse().getHeader("Location");
+
+        mvc.perform(post(caminho + "/interacoes").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "texto": "Vou verificar o equipamento.",
+                                  "autorId": 1
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.texto").value("Vou verificar o equipamento."))
+                .andExpect(jsonPath("$.dataHora").isNotEmpty())
+                .andExpect(jsonPath("$.autorId").value(1));
+    }
+
+    @Test
+    void devolve400QuandoTextoOuAutorDaInteracaoSaoInvalidos() throws Exception {
+        mvc.perform(post("/chamados/{id}/interacoes", 999)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"texto\":\"   \",\"autorId\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.caminho").value("/chamados/999/interacoes"))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("texto")))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("autorId")));
+    }
+
+    @Test
+    void incluiInteracaoCriadaNoHistoricoDoChamado() throws Exception {
+        MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String caminho = criado.getResponse().getHeader("Location");
+
+        mvc.perform(post(caminho + "/interacoes").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoInteracao(1)))
+                .andExpect(status().isCreated());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        mvc.perform(get(caminho))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.interacoes[0].texto").value("Mensagem de teste."))
+                .andExpect(jsonPath("$.interacoes[0].autorId").value(1))
+                .andExpect(jsonPath("$.interacoes[0].dataHora").isNotEmpty());
+    }
+
+    @Test
+    void permiteInteracaoDoTecnicoAtribuido() throws Exception {
+        MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String caminho = criado.getResponse().getHeader("Location");
+
+        mvc.perform(patch(caminho + "/assumir").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\":3}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(post(caminho + "/interacoes").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoInteracao(3)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.texto").value("Mensagem de teste."))
+                .andExpect(jsonPath("$.autorId").value(3));
+    }
+
+    @Test
+    void devolve409QuandoAutorNaoParticipaDoChamado() throws Exception {
+        Long chamadoId = inserirChamado("Chamado da Ana", "MEDIA", "ABERTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, null);
+
+        mvc.perform(post("/chamados/{id}/interacoes", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoInteracao(2)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("solicitante")))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/interacoes"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RESOLVIDO", "CANCELADO"})
+    void devolve409QuandoChamadoEncerradoRecebeInteracao(String statusAtual) throws Exception {
+        Long tecnicoId = statusAtual.equals("RESOLVIDO") ? 3L : null;
+        Long chamadoId = inserirChamado("Chamado encerrado", "MEDIA", statusAtual,
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, tecnicoId);
+
+        mvc.perform(post("/chamados/{id}/interacoes", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoInteracao(1)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/interacoes"));
     }
 
     @Test
@@ -424,6 +535,10 @@ class ChamadoControllerTest {
 
     private static String pedidoCancelamento(int solicitanteId) {
         return "{\"solicitanteId\":" + solicitanteId + "}";
+    }
+
+    private static String pedidoInteracao(int autorId) {
+        return "{\"texto\":\"Mensagem de teste.\",\"autorId\":" + autorId + "}";
     }
 
     private Long inserirChamado(String titulo, String prioridade, String status, LocalDateTime dataAbertura,
