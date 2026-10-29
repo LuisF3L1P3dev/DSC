@@ -45,6 +45,14 @@ Invoke-RestMethod -Uri "http://localhost:8080/chamados?status=ABERTO&page=0&size
 
 As páginas começam em `0`. O tamanho padrão é de 10 itens e o limite é de 50. Em um banco novo, a listagem de chamados estará vazia até que um chamado seja aberto.
 
+### Coleção de requisições `.http`
+
+Abra [requisicoes.http](requisicoes.http) no HTTP Client do IntelliJ IDEA. Com a API iniciada, execute os blocos de cima para baixo, um por vez, usando o botão de execução ao lado de cada requisição. Confira o código HTTP indicado no título antes de seguir; os blocos marcados como erro esperado demonstram os retornos 400, 404 e 409.
+
+O arquivo cobre todos os endpoints exigidos e seus filtros. Ele cria os próprios dados de exemplo e usa scripts de resposta para capturar IDs e e-mail, reutilizados nos blocos seguintes por variáveis como `{{exemploChamadoId}}`. A sintaxe segue a [documentação do HTTP Client](https://www.jetbrains.com/help/idea/http-client-reference.html); as variáveis dinâmicas geram siglas e e-mails novos em cada execução, conforme a [referência de variáveis](https://www.jetbrains.com/help/idea/http-client-variables.html).
+
+A sequência inclui cadastro e atualização, abertura de chamado, interações, atendimento, resolução e um segundo chamado para cancelamento. As exclusões com sucesso usam uma categoria e um setor descartáveis, criados no fim da coleção. Os usuários e os chamados de demonstração permanecem no banco após a execução.
+
 ### Parar os serviços
 
 ```powershell
