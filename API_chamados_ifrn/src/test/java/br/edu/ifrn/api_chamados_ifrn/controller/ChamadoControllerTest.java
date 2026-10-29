@@ -91,6 +91,72 @@ class ChamadoControllerTest {
     }
 
     @Test
+    void cancelaChamadoEDevolveEstadoAtualizado() throws Exception {
+        MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
+                        .content(pedido(1, 1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String caminho = criado.getResponse().getHeader("Location");
+
+        mvc.perform(patch(caminho + "/cancelar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"solicitanteId\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADO"))
+                .andExpect(jsonPath("$.solicitanteId").value(1));
+    }
+
+    @Test
+    void devolve400QuandoSolicitanteIdNaoEValidoAoCancelar() throws Exception {
+        mvc.perform(patch("/chamados/{id}/cancelar", 999)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"solicitanteId\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.caminho").value("/chamados/999/cancelar"))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("solicitanteId")));
+    }
+
+    @Test
+    void devolve404EFormatoPadronizadoQuandoChamadoNaoExisteAoCancelar() throws Exception {
+        mvc.perform(patch("/chamados/{id}/cancelar", 999999)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoCancelamento(1)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("Chamado")))
+                .andExpect(jsonPath("$.caminho").value("/chamados/999999/cancelar"));
+    }
+
+    @Test
+    void devolve409QuandoOutroSolicitanteTentaCancelar() throws Exception {
+        Long chamadoId = inserirChamado("Chamado da Ana", "MEDIA", "ABERTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, null);
+
+        mvc.perform(patch("/chamados/{id}/cancelar", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoCancelamento(2)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("solicitante")))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/cancelar"));
+    }
+
+    @Test
+    void devolve409QuandoChamadoJaEstaEmAtendimento() throws Exception {
+        Long chamadoId = inserirChamado("Chamado em atendimento", "MEDIA", "EM_ATENDIMENTO",
+                LocalDateTime.of(2026, 1, 1, 9, 0), 1L, 1L, 3L);
+
+        mvc.perform(patch("/chamados/{id}/cancelar", chamadoId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoCancelamento(1)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString("ABERTO")))
+                .andExpect(jsonPath("$.caminho").value("/chamados/" + chamadoId + "/cancelar"));
+    }
+
+    @Test
     void resolveChamadoEDevolveSolucaoEDataDeFechamento() throws Exception {
         MvcResult criado = mvc.perform(post("/chamados").contentType(MediaType.APPLICATION_JSON)
                         .content(pedido(1, 1)))
@@ -354,6 +420,10 @@ class ChamadoControllerTest {
 
     private static String pedidoResolucao(int tecnicoId) {
         return "{\"tecnicoId\":" + tecnicoId + ",\"solucao\":\"Problema corrigido.\"}";
+    }
+
+    private static String pedidoCancelamento(int solicitanteId) {
+        return "{\"solicitanteId\":" + solicitanteId + "}";
     }
 
     private Long inserirChamado(String titulo, String prioridade, String status, LocalDateTime dataAbertura,
