@@ -5,12 +5,14 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoDetalheResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoFiltro;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoResponse;
+import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.exception.RecursoNaoEncontradoException;
 import br.edu.ifrn.api_chamados_ifrn.exception.RegraNegocioException;
 import br.edu.ifrn.api_chamados_ifrn.model.Categoria;
 import br.edu.ifrn.api_chamados_ifrn.model.Chamado;
 import br.edu.ifrn.api_chamados_ifrn.model.Interacao;
 import br.edu.ifrn.api_chamados_ifrn.model.Prioridade;
+import br.edu.ifrn.api_chamados_ifrn.model.Setor;
 import br.edu.ifrn.api_chamados_ifrn.model.Status;
 import br.edu.ifrn.api_chamados_ifrn.model.TipoUsuario;
 import br.edu.ifrn.api_chamados_ifrn.model.Usuario;
@@ -19,6 +21,7 @@ import br.edu.ifrn.api_chamados_ifrn.repository.ChamadoRepository;
 import br.edu.ifrn.api_chamados_ifrn.repository.UsuarioRepository;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -62,6 +65,32 @@ public class ChamadoService {
         chamado.setSolicitante(solicitante);
         chamado.setCategoria(categoria);
 
+        return resposta(chamadoRepository.save(chamado));
+    }
+
+    @Transactional
+    public ChamadoResponse assumir(Long chamadoId, AssumirChamadoRequest request) {
+        Chamado chamado = chamadoRepository.findById(chamadoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado: " + chamadoId));
+        if (chamado.getStatus() != Status.ABERTO) {
+            throw new RegraNegocioException("Somente chamados com status ABERTO podem ser assumidos.");
+        }
+
+        Usuario tecnico = usuarioRepository.findById(request.tecnicoId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Usuário não encontrado: " + request.tecnicoId()));
+        if (tecnico.getTipo() != TipoUsuario.TECNICO) {
+            throw new RegraNegocioException("O usuário informado não é um técnico.");
+        }
+
+        Setor setorTecnico = tecnico.getSetor();
+        Setor setorCategoria = chamado.getCategoria().getSetor();
+        if (setorTecnico == null || !Objects.equals(setorTecnico.getId(), setorCategoria.getId())) {
+            throw new RegraNegocioException("O técnico deve pertencer ao setor da categoria do chamado.");
+        }
+
+        chamado.setTecnico(tecnico);
+        chamado.setStatus(Status.EM_ATENDIMENTO);
         return resposta(chamadoRepository.save(chamado));
     }
 
