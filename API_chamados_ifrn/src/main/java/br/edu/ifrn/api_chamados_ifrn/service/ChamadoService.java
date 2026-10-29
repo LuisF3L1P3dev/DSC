@@ -6,6 +6,7 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoFiltro;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.InteracaoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
+import br.edu.ifrn.api_chamados_ifrn.dto.CancelarChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.dto.ResolverChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.exception.RecursoNaoEncontradoException;
 import br.edu.ifrn.api_chamados_ifrn.exception.RegraNegocioException;
@@ -112,6 +113,21 @@ public class ChamadoService {
         chamado.setSolucao(request.solucao());
         chamado.setStatus(Status.RESOLVIDO);
         chamado.setDataFechamento(LocalDateTime.now());
+        return resposta(chamadoRepository.save(chamado));
+    }
+
+    @Transactional
+    public ChamadoResponse cancelar(Long chamadoId, CancelarChamadoRequest request) {
+        Chamado chamado = chamadoRepository.findById(chamadoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado n\u00e3o encontrado: " + chamadoId));
+        if (chamado.getStatus() != Status.ABERTO) {
+            throw new RegraNegocioException("Somente chamados com status ABERTO podem ser cancelados.");
+        }
+        if (!Objects.equals(chamado.getSolicitante().getId(), request.solicitanteId())) {
+            throw new RegraNegocioException("Somente o solicitante do chamado pode cancel\u00e1-lo.");
+        }
+
+        chamado.setStatus(Status.CANCELADO);
         return resposta(chamadoRepository.save(chamado));
     }
 

@@ -6,6 +6,7 @@ import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoFiltro;
 import br.edu.ifrn.api_chamados_ifrn.dto.ChamadoResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.PaginaResponse;
 import br.edu.ifrn.api_chamados_ifrn.dto.AssumirChamadoRequest;
+import br.edu.ifrn.api_chamados_ifrn.dto.CancelarChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.dto.ResolverChamadoRequest;
 import br.edu.ifrn.api_chamados_ifrn.service.ChamadoService;
 import jakarta.validation.Valid;
@@ -49,6 +50,12 @@ public class ChamadoController {
     public ChamadoResponse resolver(@PathVariable("id") Long id,
             @Valid @RequestBody ResolverChamadoRequest request) {
         return chamadoService.resolver(id, request);
+    }
+
+    @PatchMapping("/{id}/cancelar")
+    public ChamadoResponse cancelar(@PathVariable("id") Long id,
+            @Valid @RequestBody CancelarChamadoRequest request) {
+        return chamadoService.cancelar(id, request);
     }
 
     @GetMapping
