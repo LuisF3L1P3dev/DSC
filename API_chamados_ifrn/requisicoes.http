@@ -1,0 +1,316 @@
+# API de Chamados IFRN — HTTP Client do IntelliJ IDEA
+# Inicie a API conforme o README e execute os blocos de cima para baixo.
+# Execute um bloco por vez e confira o status indicado antes de seguir.
+# Os scripts após as requisições salvam IDs para os próximos blocos.
+# Cada execução completa cria usuários e chamados de demonstração no banco.
+# Os recursos usados aqui são criados pela própria coleção.
+
+@baseUrl = http://localhost:8080
+@dataInicio = 2000-01-01T00:00:00
+@dataFim = 2100-12-31T23:59:59
+
+### 01 — Cadastrar setor de exemplo (201)
+POST {{baseUrl}}/setores
+Content-Type: application/json
+
+{
+  "nome": "Setor HTTP",
+  "sigla": "HTTP-{{$uuid}}"
+}
+
+> {%
+    client.assert(response.status === 201, "Confira o cadastro do setor antes de continuar.");
+    client.global.set("exemploSetorId", String(response.body.id));
+    client.global.set("exemploSetorSigla", response.body.sigla);
+%}
+
+### 02 — Listar setores com filtro e paginação (200)
+GET {{baseUrl}}/setores?nome=HTTP&page=0&size=10&sort=nome,asc
+
+### 03 — Consultar setor por ID (200)
+GET {{baseUrl}}/setores/{{exemploSetorId}}
+
+### 04 — Atualizar setor (200)
+PUT {{baseUrl}}/setores/{{exemploSetorId}}
+Content-Type: application/json
+
+{
+  "nome": "Setor HTTP atualizado",
+  "sigla": "{{exemploSetorSigla}}"
+}
+
+### 05 — Cadastrar categoria vinculada ao setor (201)
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nome": "Categoria HTTP",
+  "descricao": "Categoria usada no fluxo de estudo.",
+  "setorId": {{exemploSetorId}}
+}
+
+> {%
+    client.assert(response.status === 201, "Confira o cadastro da categoria antes de continuar.");
+    client.global.set("exemploCategoriaId", String(response.body.id));
+%}
+
+### 06 — Listar categorias com filtros combinados (200)
+GET {{baseUrl}}/categorias?nome=HTTP&setorId={{exemploSetorId}}&page=0&size=10&sort=id,asc
+
+### 07 — Consultar categoria por ID (200)
+GET {{baseUrl}}/categorias/{{exemploCategoriaId}}
+
+### 08 — Atualizar categoria (200)
+PUT {{baseUrl}}/categorias/{{exemploCategoriaId}}
+Content-Type: application/json
+
+{
+  "nome": "Categoria HTTP atualizada",
+  "descricao": "Descrição atualizada para o exemplo.",
+  "setorId": {{exemploSetorId}}
+}
+
+### 09 — Listar as categorias de um setor (200)
+GET {{baseUrl}}/setores/{{exemploSetorId}}/categorias?nome=HTTP&page=0&size=10&sort=id,asc
+
+### 10 — Cadastrar solicitante (201)
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Solicitante HTTP",
+  "email": "solicitante.http+{{$uuid}}@example.com",
+  "matricula": "HTTP-SOL-{{$timestamp}}",
+  "tipo": "SOLICITANTE",
+  "setorId": null
+}
+
+> {%
+    client.assert(response.status === 201, "Confira o cadastro do solicitante antes de continuar.");
+    client.global.set("exemploSolicitanteId", String(response.body.id));
+    client.global.set("exemploSolicitanteEmail", response.body.email);
+%}
+
+### 11 — Listar solicitantes com filtro por nome e tipo (200)
+GET {{baseUrl}}/usuarios?nome=Solicitante&tipo=SOLICITANTE&page=0&size=10&sort=id,desc
+
+### 12 — Consultar usuário por ID (200)
+GET {{baseUrl}}/usuarios/{{exemploSolicitanteId}}
+
+### 13 — Atualizar usuário preservando seu e-mail (200)
+PUT {{baseUrl}}/usuarios/{{exemploSolicitanteId}}
+Content-Type: application/json
+
+{
+  "nome": "Solicitante HTTP atualizado",
+  "email": "{{exemploSolicitanteEmail}}",
+  "matricula": "HTTP-SOL-ATUALIZADA",
+  "tipo": "SOLICITANTE",
+  "setorId": null
+}
+
+### 14 — Cadastrar técnico no mesmo setor da categoria (201)
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Tecnico HTTP",
+  "email": "tecnico.http+{{$uuid}}@example.com",
+  "matricula": "HTTP-TEC-{{$timestamp}}",
+  "tipo": "TECNICO",
+  "setorId": {{exemploSetorId}}
+}
+
+> {%
+    client.assert(response.status === 201, "Confira o cadastro do técnico antes de continuar.");
+    client.global.set("exemploTecnicoId", String(response.body.id));
+%}
+
+### 15 — Listar usuários combinando nome, tipo e setor (200)
+GET {{baseUrl}}/usuarios?nome=Tecnico&tipo=TECNICO&setorId={{exemploSetorId}}&page=0&size=10&sort=id,asc
+
+### 16 — Abrir chamado que será atendido e resolvido (201)
+# O service preenche status ABERTO e dataAbertura.
+POST {{baseUrl}}/chamados
+Content-Type: application/json
+
+{
+  "titulo": "Falha na rede — exemplo HTTP",
+  "descricao": "O computador do laboratório está sem conexão.",
+  "local": "Laboratório de Informática",
+  "prioridade": "ALTA",
+  "solicitanteId": {{exemploSolicitanteId}},
+  "categoriaId": {{exemploCategoriaId}}
+}
+
+> {%
+    client.assert(response.status === 201, "Confira a abertura do chamado antes de continuar.");
+    client.global.set("exemploChamadoId", String(response.body.id));
+%}
+
+### 17 — Listar chamados com paginação (200)
+GET {{baseUrl}}/chamados?page=0&size=10&sort=dataAbertura,desc
+
+### 18 — Consultar chamado com seu histórico (200)
+GET {{baseUrl}}/chamados/{{exemploChamadoId}}
+
+### 19 — Solicitante registra uma interação (201)
+POST {{baseUrl}}/chamados/{{exemploChamadoId}}/interacoes
+Content-Type: application/json
+
+{
+  "texto": "O problema também ocorre após reiniciar o computador.",
+  "autorId": {{exemploSolicitanteId}}
+}
+
+### 20 — Técnico do setor assume o chamado (200)
+# O status passa de ABERTO para EM_ATENDIMENTO.
+PATCH {{baseUrl}}/chamados/{{exemploChamadoId}}/assumir
+Content-Type: application/json
+
+{
+  "tecnicoId": {{exemploTecnicoId}}
+}
+
+### 21 — Técnico atribuído registra o andamento (201)
+POST {{baseUrl}}/chamados/{{exemploChamadoId}}/interacoes
+Content-Type: application/json
+
+{
+  "texto": "Identificado defeito no cabo de rede. Vou substituí-lo.",
+  "autorId": {{exemploTecnicoId}}
+}
+
+### 22 — Listar chamados combinando todos os filtros (200)
+# O período usa data e hora no formato ISO, sem fuso, como LocalDateTime.
+GET {{baseUrl}}/chamados
+    ?status=EM_ATENDIMENTO
+    &prioridade=ALTA
+    &setorId={{exemploSetorId}}
+    &categoriaId={{exemploCategoriaId}}
+    &solicitanteId={{exemploSolicitanteId}}
+    &tecnicoId={{exemploTecnicoId}}
+    &dataInicio={{dataInicio}}
+    &dataFim={{dataFim}}
+    &page=0
+    &size=10
+    &sort=dataAbertura,desc
+
+### 23 — Listar chamados do solicitante com filtro por status (200)
+GET {{baseUrl}}/usuarios/{{exemploSolicitanteId}}/chamados?status=EM_ATENDIMENTO&page=0&size=10&sort=dataAbertura,desc
+
+### 24 — Listar chamados atribuídos ao técnico (200)
+GET {{baseUrl}}/usuarios/{{exemploTecnicoId}}/chamados?status=EM_ATENDIMENTO&page=0&size=10&sort=dataAbertura,desc
+
+### 25 — Conferir as duas interações no histórico (200)
+GET {{baseUrl}}/chamados/{{exemploChamadoId}}
+
+### 26 — Resolver chamado com o técnico atribuído (200)
+# O status passa para RESOLVIDO e dataFechamento é preenchida.
+PATCH {{baseUrl}}/chamados/{{exemploChamadoId}}/resolver
+Content-Type: application/json
+
+{
+  "tecnicoId": {{exemploTecnicoId}},
+  "solucao": "Cabo de rede substituído. Conexão restabelecida e testada."
+}
+
+### 27 — Conferir solução e histórico após resolver (200)
+GET {{baseUrl}}/chamados/{{exemploChamadoId}}
+
+### 28 — Abrir outro chamado para demonstrar cancelamento (201)
+# Sem prioridade no corpo, o service usa MEDIA.
+POST {{baseUrl}}/chamados
+Content-Type: application/json
+
+{
+  "titulo": "Solicitação duplicada — exemplo HTTP",
+  "descricao": "Chamado aberto para demonstrar o cancelamento pelo solicitante.",
+  "local": "Laboratório de Informática",
+  "solicitanteId": {{exemploSolicitanteId}},
+  "categoriaId": {{exemploCategoriaId}}
+}
+
+> {%
+    client.assert(response.status === 201, "Confira o segundo chamado antes de continuar.");
+    client.global.set("exemploChamadoCancelamentoId", String(response.body.id));
+%}
+
+### 29 — Próprio solicitante cancela enquanto está ABERTO (200)
+PATCH {{baseUrl}}/chamados/{{exemploChamadoCancelamentoId}}/cancelar
+Content-Type: application/json
+
+{
+  "solicitanteId": {{exemploSolicitanteId}}
+}
+
+### 30 — Listar chamados cancelados do solicitante (200)
+GET {{baseUrl}}/usuarios/{{exemploSolicitanteId}}/chamados?status=CANCELADO&page=0&size=10&sort=dataAbertura,desc
+
+### 31 — Exemplo de validação: título em branco (400 esperado)
+POST {{baseUrl}}/chamados
+Content-Type: application/json
+
+{
+  "titulo": " ",
+  "descricao": "Exemplo de dados inválidos.",
+  "local": "Sala 1",
+  "solicitanteId": {{exemploSolicitanteId}},
+  "categoriaId": {{exemploCategoriaId}}
+}
+
+### 32 — Exemplo de recurso inexistente (404 esperado)
+GET {{baseUrl}}/chamados/9223372036854775807
+
+### 33 — Exemplo de conflito: e-mail já cadastrado (409 esperado)
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Outro usuário HTTP",
+  "email": "{{exemploSolicitanteEmail}}",
+  "matricula": "HTTP-DUPLICADA",
+  "tipo": "SOLICITANTE",
+  "setorId": null
+}
+
+### 34 — Exemplo de bloqueio: categoria com chamados (409 esperado)
+DELETE {{baseUrl}}/categorias/{{exemploCategoriaId}}
+
+### 35 — Exemplo de bloqueio: setor com vínculos (409 esperado)
+DELETE {{baseUrl}}/setores/{{exemploSetorId}}
+
+### 36 — Cadastrar setor descartável para demonstrar DELETE com sucesso (201)
+POST {{baseUrl}}/setores
+Content-Type: application/json
+
+{
+  "nome": "Setor HTTP descartável",
+  "sigla": "DESC-{{$uuid}}"
+}
+
+> {%
+    client.assert(response.status === 201, "Confira o setor descartável antes de continuar.");
+    client.global.set("exemploSetorDescartavelId", String(response.body.id));
+%}
+
+### 37 — Cadastrar categoria descartável sem chamados (201)
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nome": "Categoria HTTP descartável",
+  "descricao": "Será excluída no próximo bloco.",
+  "setorId": {{exemploSetorDescartavelId}}
+}
+
+> {%
+    client.assert(response.status === 201, "Confira a categoria descartável antes de continuar.");
+    client.global.set("exemploCategoriaDescartavelId", String(response.body.id));
+%}
+
+### 38 — Excluir categoria sem chamados (204, sem corpo)
+DELETE {{baseUrl}}/categorias/{{exemploCategoriaDescartavelId}}
+
+### 39 — Excluir setor que ficou sem vínculos (204, sem corpo)
+DELETE {{baseUrl}}/setores/{{exemploSetorDescartavelId}}
